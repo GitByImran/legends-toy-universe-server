@@ -1,6 +1,6 @@
 const express = require("express");
 const cors = require("cors");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 require("dotenv").config();
 const app = express();
@@ -20,12 +20,42 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    await client.connect();
-
     const toyCollections = client.db("toyDB").collection("toys");
+
+    // user toys
+
+    app.get("/toys", async (req, res) => {
+      let query = {};
+      if (req.query?.email) {
+        query = { email: req.query.email };
+      }
+      const result = await toyCollections.find(query).toArray();
+      res.send(result);
+    });
+
+    // all toys
+
     app.get("/toys", async (req, res) => {
       const getAllToys = toyCollections.find({});
       const result = await getAllToys.toArray();
+      res.send(result);
+    });
+
+    app.post("/toys", async (req, res) => {
+      const addToy = req.body;
+      const result = await toyCollections.insertOne(addToy);
+      res.send(result);
+    });
+
+    app.patch("/toys/:id", async (req, res) => {
+      const updatedetails = req.body;
+      console.log(updatedetails);
+    });
+
+    app.delete("/toys/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await toyCollections.deleteOne(query);
       res.send(result);
     });
 
@@ -34,7 +64,6 @@ async function run() {
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
   } finally {
-    // await client.close();
   }
 }
 run().catch(console.dir);
