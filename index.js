@@ -24,13 +24,22 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    await client.connect();
     const toyCollections = client.db("toyDB").collection("toys");
 
-    // Get all toys or user-specific toys
     app.get("/toys", async (req, res) => {
       const query = req.query.email ? { email: req.query.email } : {};
-      const result = await toyCollections.find(query).toArray();
+
+      let sort = {};
+      if (req.query.sort === "price") {
+        sort = { price: req.query.order === "desc" ? -1 : 1 };
+      }
+
+      const result = await toyCollections
+        .find(query)
+        .limit(20)
+        .sort(sort)
+        .toArray();
+
       res.send(result);
     });
 
