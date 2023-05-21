@@ -7,6 +7,10 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  next();
+});
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster1.jwgax72.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -20,24 +24,13 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
+    await client.connect();
     const toyCollections = client.db("toyDB").collection("toys");
 
-    // user toys
-
+    // Get all toys or user-specific toys
     app.get("/toys", async (req, res) => {
-      let query = {};
-      if (req.query?.email) {
-        query = { email: req.query.email };
-      }
+      const query = req.query.email ? { email: req.query.email } : {};
       const result = await toyCollections.find(query).toArray();
-      res.send(result);
-    });
-
-    // all toys
-
-    app.get("/toys", async (req, res) => {
-      const getAllToys = toyCollections.find({});
-      const result = await getAllToys.toArray();
       res.send(result);
     });
 
@@ -47,9 +40,12 @@ async function run() {
       res.send(result);
     });
 
-    app.patch("/toys/:id", async (req, res) => {
-      const updatedetails = req.body;
-      console.log(updatedetails);
+    app.put("/toys/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const update = { $set: req.body };
+      const result = await toyCollections.updateOne(query, update);
+      res.send(result);
     });
 
     app.delete("/toys/:id", async (req, res) => {
@@ -59,19 +55,19 @@ async function run() {
       res.send(result);
     });
 
-    await client.db("admin").command({ ping: 1 });
     console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
+      "Connected to MongoDB! Server is listening on port " +
+        (process.env.PORT || 5000)
     );
-  } finally {
+  } catch (error) {
+    console.error("Error connecting to MongoDB:", error);
   }
 }
-run().catch(console.dir);
+
+run().catch(console.error);
 
 app.get("/", (req, res) => {
-  res.send("app is running");
+  res.send("App is running");
 });
 
-app.listen(process.env.PORT || 5000, () => {
-  console.log(`app is listening from ${process.env.PORT || 5000}`);
-});
+app.listen(process.env.PORT || 5000);
